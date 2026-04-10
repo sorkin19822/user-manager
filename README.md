@@ -11,6 +11,7 @@ User management demo app built with Bootstrap, jQuery, Ajax, vanilla PHP MVC, an
 - One Bootstrap modal reused for add and edit.
 - Bootstrap confirm/warning modals, no native `alert()` or `confirm()`.
 - Backend validation for required fields and allowed values.
+- Frontend Bootstrap validation for required name fields and name characters.
 - JSON API responses with a consistent `{status, error, ...payload}` shape.
 
 ## Stack
@@ -178,10 +179,14 @@ Backend validation is required and implemented for:
 - positive integer ids;
 - non-empty `name_first`;
 - non-empty `name_last`;
+- `name_first` and `name_last` maximum length of 100 characters;
+- `name_first` and `name_last` characters: Unicode letters, spaces, hyphens, and apostrophes;
 - role must be `admin` or `user`;
 - status must resolve to active or inactive;
 - bulk ids must be a non-empty array of positive integers;
 - bulk action must be `set_active`, `set_inactive`, or `delete`.
+
+The user modal also uses Bootstrap validation for the same name fields before sending Ajax requests.
 
 ## Manual QA
 
@@ -227,6 +232,7 @@ API smoke checks:
 docker compose exec -T php curl -s http://localhost/users/list
 docker compose exec -T php curl -s http://localhost/users/get/1
 docker compose exec -T php curl -s -X POST http://localhost/users/create
+docker compose exec -T php curl -s -X POST http://localhost/users/create -d name_first=Carol -d 'name_last=Williams***956' -d role=user -d status=1
 ```
 
 Stop containers:
