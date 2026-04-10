@@ -21,6 +21,7 @@ use App\Models\User;
 class UserController extends Controller
 {
     private const NAME_MAX_LENGTH = 100;
+    private const NAME_PATTERN = "/^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u";
 
     /** Renders the main page (Bootstrap SPA shell). */
     #[Route('/', methods: 'GET')]
@@ -253,12 +254,20 @@ class UserController extends Controller
             return ['code' => 101, 'message' => 'name_first must not exceed ' . self::NAME_MAX_LENGTH . ' characters'];
         }
 
+        if (!$this->isValidName($data['name_first'])) {
+            return ['code' => 101, 'message' => 'name_first contains invalid characters'];
+        }
+
         if ($data['name_last'] === '') {
             return ['code' => 101, 'message' => 'name_last is required'];
         }
 
         if (mb_strlen($data['name_last']) > self::NAME_MAX_LENGTH) {
             return ['code' => 101, 'message' => 'name_last must not exceed ' . self::NAME_MAX_LENGTH . ' characters'];
+        }
+
+        if (!$this->isValidName($data['name_last'])) {
+            return ['code' => 101, 'message' => 'name_last contains invalid characters'];
         }
 
         if (!in_array($data['role'], User::allowedRoles(), true)) {
@@ -285,5 +294,10 @@ class UserController extends Controller
             '0', 'false', 'off', 'inactive' => 'inactive',
             default => $status,
         };
+    }
+
+    private function isValidName(string $name): bool
+    {
+        return preg_match(self::NAME_PATTERN, $name) === 1;
     }
 }

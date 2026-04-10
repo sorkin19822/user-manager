@@ -60,7 +60,7 @@
 
 <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form class="modal-content" id="userForm">
+        <form class="modal-content needs-validation" id="userForm" novalidate>
             <div class="modal-header">
                 <h5 class="modal-title" id="userModalLabel">Add user</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -72,20 +72,23 @@
 
                 <div class="mb-3">
                     <label for="nameFirst" class="form-label">First Name</label>
-                    <input type="text" class="form-control" id="nameFirst" name="name_first">
+                    <input type="text" class="form-control" id="nameFirst" name="name_first" maxlength="100" required>
+                    <div class="invalid-feedback">Use letters, spaces, hyphens, or apostrophes.</div>
                 </div>
 
                 <div class="mb-3">
                     <label for="nameLast" class="form-label">Last Name</label>
-                    <input type="text" class="form-control" id="nameLast" name="name_last">
+                    <input type="text" class="form-control" id="nameLast" name="name_last" maxlength="100" required>
+                    <div class="invalid-feedback">Use letters, spaces, hyphens, or apostrophes.</div>
                 </div>
 
                 <div class="mb-3">
                     <label for="role" class="form-label">Role</label>
-                    <select class="form-select" id="role" name="role">
+                    <select class="form-select" id="role" name="role" required>
                         <option value="user">user</option>
                         <option value="admin">admin</option>
                     </select>
+                    <div class="invalid-feedback">Role is required.</div>
                 </div>
 
                 <div class="form-check form-switch">
@@ -95,7 +98,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save</button>
+                <button type="submit" class="btn btn-primary" id="saveUserButton">Save</button>
             </div>
         </form>
     </div>

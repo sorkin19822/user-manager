@@ -5,13 +5,16 @@ $(function () {
     const $userForm = $('#userForm');
     const $userFormError = $('#userFormError');
     const $userModalTitle = $('#userModalLabel');
+    const $saveUserButton = $('#saveUserButton');
     const userModal = new bootstrap.Modal('#userModal');
     const confirmDeleteModal = new bootstrap.Modal('#confirmDeleteModal');
     const warnNoUsersModal = new bootstrap.Modal('#warnNoUsersModal');
     const warnNoActionModal = new bootstrap.Modal('#warnNoActionModal');
+    const namePattern = /^[\p{L}\p{M}]+(?:[ '\-][\p{L}\p{M}]+)*$/u;
 
     let deleteMode = null;
     let deleteIds = [];
+    let originalUserFormData = null;
 
     function showPageError(message) {
         $pageError.text(message).removeClass('d-none');
@@ -126,9 +129,12 @@ $(function () {
 
     function resetUserForm() {
         $userForm[0].reset();
+        $userForm.removeClass('was-validated');
         $('#userId').val('');
         $('#status').prop('checked', true);
         $userFormError.text('').addClass('d-none');
+        originalUserFormData = null;
+        updateSaveButtonState();
     }
 
     function openUserModal(user) {
@@ -141,10 +147,12 @@ $(function () {
             $('#nameLast').val(user.name_last);
             $('#role').val(user.role);
             $('#status').prop('checked', user.status === true || user.status === 'active');
+            originalUserFormData = formData();
         } else {
             $userModalTitle.text('Add user');
         }
 
+        updateSaveButtonState();
         userModal.show();
     }
 
@@ -157,7 +165,47 @@ $(function () {
         };
     }
 
+    function validateNameField(selector) {
+        const field = $(selector)[0];
+        const value = $.trim(field.value);
+        const isValid = value !== '' && namePattern.test(value);
+
+        field.setCustomValidity(isValid ? '' : 'Invalid name');
+    }
+
+    function validateUserFormFields() {
+        validateNameField('#nameFirst');
+        validateNameField('#nameLast');
+    }
+
+    function hasUserFormChanged() {
+        if (!originalUserFormData) {
+            return true;
+        }
+
+        const current = formData();
+        return Object.keys(originalUserFormData).some(function (key) {
+            return String(originalUserFormData[key]) !== String(current[key]);
+        });
+    }
+
+    function updateSaveButtonState() {
+        const isEdit = $('#userId').val() !== '';
+        $saveUserButton.prop('disabled', isEdit && !hasUserFormChanged());
+    }
+
     function submitUserForm() {
+        validateUserFormFields();
+
+        if (!$userForm[0].checkValidity()) {
+            $userForm.addClass('was-validated');
+            return;
+        }
+
+        if (!hasUserFormChanged()) {
+            return;
+        }
+
         const id = $('#userId').val();
         const url = id ? '/users/update/' + encodeURIComponent(id) : '/users/create';
 
@@ -311,6 +359,11 @@ $(function () {
     $userForm.on('submit', function (event) {
         event.preventDefault();
         submitUserForm();
+    });
+
+    $userForm.on('input change', 'input, select', function () {
+        validateUserFormFields();
+        updateSaveButtonState();
     });
 
     $('#confirmDeleteButton').on('click', function () {

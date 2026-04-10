@@ -63,12 +63,16 @@ class User
     }
 
     /**
-     * Updates an existing user. Returns true if a row was affected.
+     * Updates an existing user. Returns true if the row exists.
      *
      * @param  array{name_first: string, name_last: string, role: string, status: string} $data
      */
     public function updateUser(int $id, array $data): bool
     {
+        if (!$this->userExists($id)) {
+            return false;
+        }
+
         $this->db->query(
             'UPDATE users
              SET name_first = :name_first, name_last = :name_last,
@@ -82,7 +86,7 @@ class User
         $this->db->bind(':id',         $id, \PDO::PARAM_INT);
         $this->db->execute();
 
-        return $this->db->rowCount() > 0;
+        return true;
     }
 
     /** Deletes a user. Returns true if a row was deleted. */
@@ -110,11 +114,18 @@ class User
             return false;
         }
 
+        $ids = array_values(array_unique(array_map('intval', $ids)));
+
         $placeholders = [];
         foreach ($ids as $i => $_) {
             $placeholders[] = ":id{$i}";
         }
         $in = implode(',', $placeholders);
+
+        $matched = $this->countUsersByIds($ids);
+        if ($matched === 0) {
+            return false;
+        }
 
         if ($action === 'delete') {
             $this->db->query("DELETE FROM users WHERE id IN ({$in})");
@@ -129,7 +140,7 @@ class User
         }
 
         $this->db->execute();
-        return $this->db->rowCount() > 0;
+        return true;
     }
 
     /** @return string[] */
@@ -156,5 +167,35 @@ class User
         $user['status'] = $user['status'] === 'active';
 
         return $user;
+    }
+
+    private function userExists(int $id): bool
+    {
+        $this->db->query('SELECT 1 FROM users WHERE id = :id LIMIT 1');
+        $this->db->bind(':id', $id, \PDO::PARAM_INT);
+
+        return $this->db->result() !== false;
+    }
+
+    /** @param int[] $ids */
+    private function countUsersByIds(array $ids): int
+    {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $placeholders = [];
+        foreach ($ids as $i => $_) {
+            $placeholders[] = ":id{$i}";
+        }
+
+        $this->db->query('SELECT COUNT(*) AS total FROM users WHERE id IN (' . implode(',', $placeholders) . ')');
+        foreach ($ids as $i => $id) {
+            $this->db->bind(":id{$i}", $id, \PDO::PARAM_INT);
+        }
+
+        $row = $this->db->result();
+
+        return $row === false ? 0 : (int) $row['total'];
     }
 }
