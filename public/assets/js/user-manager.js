@@ -2,6 +2,7 @@ $(function () {
     const $tableBody = $('#usersTableBody');
     const $checkAll = $('#checkAllUsers');
     const $pageError = $('#pageError');
+    const $pageErrorText = $('#pageErrorText');
     const $userForm = $('#userForm');
     const $userFormError = $('#userFormError');
     const $userModalTitle = $('#userModalLabel');
@@ -19,17 +20,24 @@ $(function () {
     let originalUserFormData = null;
 
     function showPageError(message) {
-        $pageError.text(message).removeClass('d-none');
+        $pageErrorText.text(message);
+        $pageError.removeClass('d-none');
     }
 
     function clearPageError() {
-        $pageError.text('').addClass('d-none');
+        $pageErrorText.text('');
+        $pageError.addClass('d-none');
     }
 
     function errorMessage(response, fallback) {
         return response && response.error && response.error.message
             ? response.error.message
             : fallback;
+    }
+
+    function isNotFoundResponse(xhr) {
+        return xhr.status === 404
+            || (xhr.responseJSON && xhr.responseJSON.error && xhr.responseJSON.error.code === 100);
     }
 
     function statusBadge(status) {
@@ -133,6 +141,34 @@ $(function () {
     function setRowsStatus(ids, status) {
         ids.forEach(function (id) {
             userRow(id).find('.js-user-status').empty().append(statusBadge(status));
+        });
+    }
+
+    function refreshUserRow(id) {
+        $.ajax({
+            url: '/users/get/' + encodeURIComponent(id),
+            method: 'GET',
+            dataType: 'json'
+        }).done(function (response) {
+            if (response.status) {
+                replaceUserRow(response.user);
+                return;
+            }
+
+            removeUserRows([id]);
+        }).fail(function (xhr) {
+            if (isNotFoundResponse(xhr)) {
+                removeUserRows([id]);
+                return;
+            }
+
+            showPageError(errorMessage(xhr.responseJSON, 'Could not refresh user.'));
+        });
+    }
+
+    function refreshUserRows(ids) {
+        ids.forEach(function (id) {
+            refreshUserRow(id);
         });
     }
 
@@ -298,6 +334,13 @@ $(function () {
 
             userModal.hide();
         }).fail(function (xhr) {
+            if (id && isNotFoundResponse(xhr)) {
+                userModal.hide();
+                removeUserRows([id]);
+                showPageError('This user was already removed. The table has been updated.');
+                return;
+            }
+
             $userFormError
                 .text(errorMessage(xhr.responseJSON, 'Could not save user.'))
                 .removeClass('d-none');
@@ -344,6 +387,13 @@ $(function () {
                 confirmDeleteModal.hide();
                 removeUserRows(deleteIds);
             }).fail(function (xhr) {
+                if (isNotFoundResponse(xhr)) {
+                    confirmDeleteModal.hide();
+                    removeUserRows(deleteIds);
+                    showPageError('This user was already removed. The table has been updated.');
+                    return;
+                }
+
                 showPageError(errorMessage(xhr.responseJSON, 'Could not delete user.'));
             });
             return;
@@ -376,12 +426,22 @@ $(function () {
                 afterSuccess();
             }
         }).fail(function (xhr) {
+            if (isNotFoundResponse(xhr)) {
+                removeUserRows(ids);
+                showPageError('Selected users were already removed. The table has been updated.');
+                return;
+            }
+
             showPageError(errorMessage(xhr.responseJSON, 'Could not update users.'));
         });
     }
 
     $('.js-add-user').on('click', function () {
         openUserModal(null);
+    });
+
+    $('#pageErrorClose').on('click', function () {
+        clearPageError();
     });
 
     $('.js-bulk-ok').on('click', function () {
@@ -409,6 +469,7 @@ $(function () {
 
         runBulkAction(action, ids, function () {
             setRowsStatus(ids, action === 'set_active');
+            refreshUserRows(ids);
             $actionSelect.val('');
         });
     });
@@ -436,6 +497,12 @@ $(function () {
 
             openUserModal(response.user);
         }).fail(function (xhr) {
+            if (isNotFoundResponse(xhr)) {
+                removeUserRows([id]);
+                showPageError('This user was already removed. The table has been updated.');
+                return;
+            }
+
             showPageError(errorMessage(xhr.responseJSON, 'Could not load user.'));
         });
     });

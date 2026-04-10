@@ -3,7 +3,10 @@
         <h4 class="mb-4">User Manager</h4>
     </header>
 
-    <div class="alert alert-danger d-none" id="pageError" role="alert"></div>
+    <div class="alert alert-danger alert-dismissible d-none" id="pageError" role="alert">
+        <span id="pageErrorText"></span>
+        <button type="button" class="btn-close" id="pageErrorClose" aria-label="Close"></button>
+    </div>
 
     <section class="d-flex gap-2 align-items-center mb-3" aria-label="Top user actions">
         <button type="button" class="btn btn-primary js-add-user">
