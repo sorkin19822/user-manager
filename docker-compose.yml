@@ -5,7 +5,8 @@ services:
     ports:
       - "80:80"
     volumes:
-      - ./src:/var/www/html/src
+      - ./public:/var/www/html/public
+      - ./app:/var/www/html/app
     depends_on:
       mysql:
         condition: service_healthy
