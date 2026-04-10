@@ -6,6 +6,8 @@ $(function () {
     const $userFormError = $('#userFormError');
     const $userModalTitle = $('#userModalLabel');
     const $saveUserButton = $('#saveUserButton');
+    const $confirmDeleteTitle = $('#confirmDeleteModalLabel');
+    const $confirmDeleteMessage = $('#confirmDeleteMessage');
     const userModal = new bootstrap.Modal('#userModal');
     const confirmDeleteModal = new bootstrap.Modal('#confirmDeleteModal');
     const warnNoUsersModal = new bootstrap.Modal('#warnNoUsersModal');
@@ -40,10 +42,104 @@ $(function () {
 
     function renderEmptyRow(message) {
         $tableBody.empty().append(
-            $('<tr>').append(
+            $('<tr>').addClass('js-empty-row').append(
                 $('<td>').attr('colspan', 5).addClass('text-muted').text(message)
             )
         );
+    }
+
+    function userFullName(user) {
+        return user.name_first + ' ' + user.name_last;
+    }
+
+    function buildUserRow(user, checked) {
+        const fullName = userFullName(user);
+        const $checkbox = $('<input>')
+            .addClass('form-check-input js-user-check')
+            .attr({
+                type: 'checkbox',
+                'aria-label': 'Select user'
+            })
+            .val(user.id)
+            .prop('checked', checked === true)
+            .data('name', fullName);
+
+        const $editButton = $('<button>')
+            .addClass('btn btn-outline-primary btn-sm me-1 js-edit-user')
+            .attr({
+                type: 'button',
+                title: 'Edit',
+                'aria-label': 'Edit user'
+            })
+            .data('id', user.id)
+            .data('name', fullName)
+            .append($('<i>').addClass('bi bi-pencil'));
+
+        const $deleteButton = $('<button>')
+            .addClass('btn btn-outline-danger btn-sm js-delete-user')
+            .attr({
+                type: 'button',
+                title: 'Delete',
+                'aria-label': 'Delete user'
+            })
+            .data('id', user.id)
+            .data('name', fullName)
+            .append($('<i>').addClass('bi bi-trash'));
+
+        return $('<tr>')
+            .attr('data-user-id', user.id)
+            .append($('<td>').append($checkbox))
+            .append($('<td>').addClass('js-user-name').text(fullName))
+            .append($('<td>').addClass('js-user-status').append(statusBadge(user.status)))
+            .append($('<td>').addClass('js-user-role').text(user.role))
+            .append($('<td>').append($editButton, $deleteButton));
+    }
+
+    function userRow(id) {
+        return $tableBody.find('tr[data-user-id="' + id + '"]');
+    }
+
+    function appendUserRow(user) {
+        $tableBody.find('.js-empty-row').remove();
+        $tableBody.append(buildUserRow(user, false));
+        $checkAll.prop('checked', false);
+    }
+
+    function replaceUserRow(user) {
+        const $row = userRow(user.id);
+        const checked = $row.find('.js-user-check').is(':checked');
+
+        if ($row.length) {
+            $row.replaceWith(buildUserRow(user, checked));
+        } else {
+            appendUserRow(user);
+        }
+
+        syncMasterCheckbox();
+    }
+
+    function removeUserRows(ids) {
+        ids.forEach(function (id) {
+            userRow(id).remove();
+        });
+
+        if (!$tableBody.find('tr[data-user-id]').length) {
+            renderEmptyRow('No users found.');
+        }
+
+        syncMasterCheckbox();
+    }
+
+    function setRowsStatus(ids, status) {
+        ids.forEach(function (id) {
+            userRow(id).find('.js-user-status').empty().append(statusBadge(status));
+        });
+    }
+
+    function syncMasterCheckbox() {
+        const total = $('.js-user-check').length;
+        const checked = $('.js-user-check:checked').length;
+        $checkAll.prop('checked', total > 0 && total === checked);
     }
 
     function renderUsers(users) {
@@ -56,42 +152,7 @@ $(function () {
         }
 
         users.forEach(function (user) {
-            const $checkbox = $('<input>')
-                .addClass('form-check-input js-user-check')
-                .attr({
-                    type: 'checkbox',
-                    'aria-label': 'Select user'
-                })
-                .val(user.id);
-
-            const $editButton = $('<button>')
-                .addClass('btn btn-outline-primary btn-sm me-1 js-edit-user')
-                .attr({
-                    type: 'button',
-                    title: 'Edit',
-                    'aria-label': 'Edit user'
-                })
-                .data('id', user.id)
-                .append($('<i>').addClass('bi bi-pencil'));
-
-            const $deleteButton = $('<button>')
-                .addClass('btn btn-outline-danger btn-sm js-delete-user')
-                .attr({
-                    type: 'button',
-                    title: 'Delete',
-                    'aria-label': 'Delete user'
-                })
-                .data('id', user.id)
-                .append($('<i>').addClass('bi bi-trash'));
-
-            $tableBody.append(
-                $('<tr>')
-                    .append($('<td>').append($checkbox))
-                    .append($('<td>').text(user.name_first + ' ' + user.name_last))
-                    .append($('<td>').append(statusBadge(user.status)))
-                    .append($('<td>').text(user.role))
-                    .append($('<td>').append($editButton, $deleteButton))
-            );
+            $tableBody.append(buildUserRow(user, false));
         });
     }
 
@@ -117,14 +178,14 @@ $(function () {
         });
     }
 
-    function selectedIds() {
+    function selectedUsers() {
         return $('.js-user-check:checked').map(function () {
-            return $(this).val();
+            const $checkbox = $(this);
+            return {
+                id: $checkbox.val(),
+                name: $checkbox.data('name')
+            };
         }).get();
-    }
-
-    function syncBulkActions(value) {
-        $('.js-bulk-action').val(value);
     }
 
     function resetUserForm() {
@@ -208,6 +269,7 @@ $(function () {
 
         const id = $('#userId').val();
         const url = id ? '/users/update/' + encodeURIComponent(id) : '/users/create';
+        const submittedData = formData();
 
         $userFormError.text('').addClass('d-none');
 
@@ -215,15 +277,26 @@ $(function () {
             url: url,
             method: 'POST',
             dataType: 'json',
-            data: formData()
+            data: submittedData
         }).done(function (response) {
             if (!response.status) {
                 $userFormError.text(errorMessage(response, 'Could not save user.')).removeClass('d-none');
                 return;
             }
 
+            if (id) {
+                replaceUserRow(response.user);
+            } else {
+                appendUserRow({
+                    id: response.id,
+                    name_first: submittedData.name_first,
+                    name_last: submittedData.name_last,
+                    role: submittedData.role,
+                    status: submittedData.status === 1
+                });
+            }
+
             userModal.hide();
-            loadUsers();
         }).fail(function (xhr) {
             $userFormError
                 .text(errorMessage(xhr.responseJSON, 'Could not save user.'))
@@ -231,9 +304,28 @@ $(function () {
         });
     }
 
-    function openDeleteModal(mode, ids) {
+    function openDeleteModal(mode, users) {
         deleteMode = mode;
-        deleteIds = ids;
+        deleteIds = users.map(function (user) {
+            return user.id;
+        });
+
+        if (mode === 'single') {
+            $confirmDeleteTitle.text('Delete user');
+            $confirmDeleteMessage.empty().text('Delete ' + users[0].name + '?');
+        } else {
+            const $list = $('<ul>').addClass('mb-0');
+            users.forEach(function (user) {
+                $list.append($('<li>').text(user.name));
+            });
+
+            $confirmDeleteTitle.text('Delete users');
+            $confirmDeleteMessage
+                .empty()
+                .append($('<p>').text('Delete selected users (' + users.length + ')?'))
+                .append($list);
+        }
+
         confirmDeleteModal.show();
     }
 
@@ -250,7 +342,7 @@ $(function () {
                 }
 
                 confirmDeleteModal.hide();
-                loadUsers();
+                removeUserRows(deleteIds);
             }).fail(function (xhr) {
                 showPageError(errorMessage(xhr.responseJSON, 'Could not delete user.'));
             });
@@ -259,6 +351,7 @@ $(function () {
 
         runBulkAction('delete', deleteIds, function () {
             confirmDeleteModal.hide();
+            removeUserRows(deleteIds);
         });
     }
 
@@ -282,8 +375,6 @@ $(function () {
             if (afterSuccess) {
                 afterSuccess();
             }
-            syncBulkActions('');
-            loadUsers();
         }).fail(function (xhr) {
             showPageError(errorMessage(xhr.responseJSON, 'Could not update users.'));
         });
@@ -293,34 +384,33 @@ $(function () {
         openUserModal(null);
     });
 
-    $('.js-bulk-action').on('change', function () {
-        syncBulkActions($(this).val());
-    });
-
     $('.js-bulk-ok').on('click', function () {
-        const action = $('.js-bulk-action').first().val();
-        const ids = selectedIds();
+        const $actionSelect = $(this).siblings('.js-bulk-action');
+        const action = $actionSelect.val();
+        const users = selectedUsers();
+        const ids = users.map(function (user) {
+            return user.id;
+        });
 
-        if (!ids.length && action) {
-            warnNoUsersModal.show();
-            return;
-        }
-
-        if (ids.length && !action) {
+        if (!action) {
             warnNoActionModal.show();
             return;
         }
 
-        if (!ids.length && !action) {
+        if (!ids.length) {
+            warnNoUsersModal.show();
             return;
         }
 
         if (action === 'delete') {
-            openDeleteModal('bulk', ids);
+            openDeleteModal('bulk', users);
             return;
         }
 
-        runBulkAction(action, ids);
+        runBulkAction(action, ids, function () {
+            setRowsStatus(ids, action === 'set_active');
+            $actionSelect.val('');
+        });
     });
 
     $checkAll.on('change', function () {
@@ -328,9 +418,7 @@ $(function () {
     });
 
     $tableBody.on('change', '.js-user-check', function () {
-        const total = $('.js-user-check').length;
-        const checked = $('.js-user-check:checked').length;
-        $checkAll.prop('checked', total > 0 && total === checked);
+        syncMasterCheckbox();
     });
 
     $tableBody.on('click', '.js-edit-user', function () {
@@ -353,7 +441,11 @@ $(function () {
     });
 
     $tableBody.on('click', '.js-delete-user', function () {
-        openDeleteModal('single', [$(this).data('id')]);
+        const $button = $(this);
+        openDeleteModal('single', [{
+            id: $button.data('id'),
+            name: $button.data('name')
+        }]);
     });
 
     $userForm.on('submit', function (event) {

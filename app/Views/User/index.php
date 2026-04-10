@@ -111,7 +111,7 @@
                 <h5 class="modal-title" id="confirmDeleteModalLabel">Delete users</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" id="confirmDeleteMessage">
                 Delete selected users?
             </div>
             <div class="modal-footer">
