@@ -35,7 +35,13 @@ class App
 
         $controllerClass = $routes[$routeKey]['controller'];
         $method          = $routes[$routeKey]['method'];
+        $allowedMethods  = $routes[$routeKey]['methods'];
         $params          = array_slice($urlParts, 2);
+
+        if (!in_array($this->requestMethod(), $allowedMethods, true)) {
+            $this->abort(405, 'Method not allowed', ['Allow' => implode(', ', $allowedMethods)]);
+            return;
+        }
 
         $controller = new $controllerClass();
 
@@ -46,7 +52,7 @@ class App
     /**
      * Scans app/Controllers/ and builds a route map from #[Route] attributes.
      *
-     * @return array<string, array{controller: string, method: string}>
+     * @return array<string, array{controller: string, method: string, methods: string[]}>
      */
     private function buildRouteMap(): array
     {
@@ -63,14 +69,17 @@ class App
                     continue;
                 }
 
-                /** @var Route $route */
-                $route    = $attrs[0]->newInstance();
-                $routeKey = ltrim($route->path, '/');
+                foreach ($attrs as $attr) {
+                    /** @var Route $route */
+                    $route    = $attr->newInstance();
+                    $routeKey = ltrim($route->path, '/');
 
-                $routes[$routeKey] = [
-                    'controller' => $className,
-                    'method'     => $reflMethod->getName(),
-                ];
+                    $routes[$routeKey] = [
+                        'controller' => $className,
+                        'method'     => $reflMethod->getName(),
+                        'methods'    => $this->normalizeMethods($route->methods),
+                    ];
+                }
             }
         }
 
@@ -90,10 +99,36 @@ class App
         return [''];
     }
 
+    /** Returns the current HTTP method as an uppercase token. */
+    private function requestMethod(): string
+    {
+        return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+    }
+
+    /**
+     * Normalises a comma/pipe separated methods declaration.
+     *
+     * @return string[]
+     */
+    private function normalizeMethods(string $methods): array
+    {
+        $parts = preg_split('/[\s,|]+/', strtoupper($methods), -1, PREG_SPLIT_NO_EMPTY);
+        $normalized = $parts === false || empty($parts) ? ['GET'] : array_values(array_unique($parts));
+
+        if (in_array('GET', $normalized, true) && !in_array('HEAD', $normalized, true)) {
+            $normalized[] = 'HEAD';
+        }
+
+        return $normalized;
+    }
+
     /** Sends a JSON error response and terminates. */
-    private function abort(int $code, string $message): never
+    private function abort(int $code, string $message, array $headers = []): never
     {
         http_response_code($code);
+        foreach ($headers as $name => $value) {
+            header("{$name}: {$value}");
+        }
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode(['status' => false, 'error' => ['code' => $code, 'message' => $message]]);
         exit;

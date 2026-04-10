@@ -13,7 +13,7 @@ namespace App\Core;
  *   #[Route('/users/create', methods: 'POST')]
  *   public function create(): void { ... }
  */
-#[\Attribute(\Attribute::TARGET_METHOD)]
+#[\Attribute(\Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
 final class Route
 {
     public function __construct(
