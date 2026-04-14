@@ -1,1 +1,10 @@
-/* Placeholder — full styles in iteration 4 */
+.status-dot {
+    width: 1rem;
+    height: 1rem;
+    display: inline-block;
+    background-color: var(--bs-secondary);
+}
+
+.status-dot.active {
+    background-color: var(--bs-success);
+}

@@ -43,8 +43,8 @@ $(function () {
     function statusBadge(status) {
         const isActive = status === true || status === 'active';
         return $('<span>')
-            .addClass('badge rounded-circle p-2')
-            .addClass(isActive ? 'text-bg-success' : 'text-bg-secondary')
+            .addClass('status-dot rounded-circle')
+            .toggleClass('active', isActive)
             .append($('<span>').addClass('visually-hidden').text(isActive ? 'active' : 'inactive'));
     }
 
@@ -140,8 +140,14 @@ $(function () {
     }
 
     function setRowsStatus(ids, status) {
+        const isActive = status === true || status === 'active';
+
         ids.forEach(function (id) {
-            userRow(id).find('.js-user-status').empty().append(statusBadge(status));
+            userRow(id)
+                .find('.status-dot')
+                .toggleClass('active', isActive)
+                .find('.visually-hidden')
+                .text(isActive ? 'active' : 'inactive');
         });
     }
 
