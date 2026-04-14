@@ -105,7 +105,10 @@ $(function () {
     }
 
     function userRow(id) {
-        return $tableBody.find('tr[data-user-id="' + id + '"]');
+        const numId = Number(id);
+        return $tableBody.find('tr[data-user-id]').filter(function () {
+            return Number($(this).attr('data-user-id')) === numId;
+        });
     }
 
     function appendUserRow(user) {
@@ -140,14 +143,20 @@ $(function () {
     }
 
     function setRowsStatus(ids, status) {
-        const isActive = status === true || status === 'active';
+        const isActive = status === 'active';
 
         ids.forEach(function (id) {
-            userRow(id)
-                .find('.status-dot')
+            const $row = userRow(id);
+            $row.find('.status-dot')
                 .toggleClass('active', isActive)
                 .find('.visually-hidden')
                 .text(isActive ? 'active' : 'inactive');
+
+            const $editBtn = $row.find('.js-edit-user');
+            const cachedUser = $editBtn.data('user');
+            if (cachedUser) {
+                $editBtn.data('user', Object.assign({}, cachedUser, { status: isActive }));
+            }
         });
     }
 
@@ -159,10 +168,10 @@ $(function () {
     }
 
     function missingIds(requestedIds, matchedIds) {
-        const matched = matchedIds.map(String);
+        const matched = matchedIds.map(Number);
 
         return requestedIds.filter(function (id) {
-            return !matched.includes(String(id));
+            return !matched.includes(Number(id));
         });
     }
 
@@ -495,7 +504,7 @@ $(function () {
             const matchedIds = response.ids || ids;
             const staleIds = missingIds(ids, matchedIds);
 
-            setRowsStatus(matchedIds, action === 'set_active');
+            setRowsStatus(matchedIds, action === 'set_active' ? 'active' : 'inactive');
             uncheckUserRows(matchedIds);
 
             if (staleIds.length) {
