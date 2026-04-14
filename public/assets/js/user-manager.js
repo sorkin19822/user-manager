@@ -242,7 +242,7 @@ $(function () {
             $('#userId').val(user.id);
             $('#nameFirst').val(user.name_first);
             $('#nameLast').val(user.name_last);
-            $('#role').val(user.role);
+            $('#role').val(roleToFormValue(user.role));
             $('#status').prop('checked', user.status === true || user.status === 'active');
             originalUserFormData = formData();
         } else {
@@ -251,6 +251,10 @@ $(function () {
 
         updateSaveButtonState();
         userModal.show();
+    }
+
+    function roleToFormValue(role) {
+        return role === 'admin' ? '1' : '2';
     }
 
     function formData() {

@@ -232,7 +232,7 @@ class UserController extends Controller
         return [
             'name_first' => trim($_POST['name_first'] ?? ''),
             'name_last'  => trim($_POST['name_last']  ?? ''),
-            'role'       => trim($_POST['role']        ?? ''),
+            'role'       => $this->normalizeRole($_POST['role'] ?? ''),
             'status'     => $this->normalizeStatus($_POST['status'] ?? 'active'),
         ];
     }
@@ -293,6 +293,17 @@ class UserController extends Controller
             '1', 'true', 'on', 'active' => 'active',
             '0', 'false', 'off', 'inactive' => 'inactive',
             default => $status,
+        };
+    }
+
+    private function normalizeRole(mixed $role): string
+    {
+        $role = strtolower(trim((string) $role));
+
+        return match ($role) {
+            '1', 'admin' => 'admin',
+            '2', 'user' => 'user',
+            default => $role,
         };
     }
 

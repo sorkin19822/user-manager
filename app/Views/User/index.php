@@ -88,8 +88,8 @@
                 <div class="mb-3">
                     <label for="role" class="form-label">Role</label>
                     <select class="form-select" id="role" name="role" required>
-                        <option value="user">user</option>
-                        <option value="admin">admin</option>
+                        <option value="1">admin</option>
+                        <option value="2">user</option>
                     </select>
                     <div class="invalid-feedback">Role is required.</div>
                 </div>
