@@ -63,16 +63,16 @@ class User
     }
 
     /**
-     * Updates an existing user. Returns true if the row exists.
+     * Updates an existing user. Returns true if the user exists.
+     *
+     * UPDATE-first: no pre-check SELECT avoids a TOCTOU race.
+     * rowCount() > 0 is the fast path; userExists() resolves the ambiguous case
+     * where rowCount() = 0 because the values were unchanged (no-op update).
      *
      * @param  array{name_first: string, name_last: string, role: string, status: string} $data
      */
     public function updateUser(int $id, array $data): bool
     {
-        if (!$this->userExists($id)) {
-            return false;
-        }
-
         $this->db->query(
             'UPDATE users
              SET name_first = :name_first, name_last = :name_last,
@@ -86,7 +86,12 @@ class User
         $this->db->bind(':id',         $id, \PDO::PARAM_INT);
         $this->db->execute();
 
-        return true;
+        if ($this->db->rowCount() > 0) {
+            return true;
+        }
+
+        // rowCount() = 0: either user not found or update was a no-op (same values).
+        return $this->userExists($id);
     }
 
     /** Deletes a user. Returns true if a row was deleted. */
@@ -118,15 +123,15 @@ class User
         $ids = array_values(array_unique(array_map('intval', $ids)));
         $matchedIds = $this->getUserIdsByIds($ids);
 
+        if (empty($matchedIds)) {
+            return false;
+        }
+
         $placeholders = [];
         foreach ($matchedIds as $i => $_) {
             $placeholders[] = ":id{$i}";
         }
         $in = implode(',', $placeholders);
-
-        if (empty($matchedIds)) {
-            return false;
-        }
 
         if ($action === 'delete') {
             $this->db->query("DELETE FROM users WHERE id IN ({$in})");

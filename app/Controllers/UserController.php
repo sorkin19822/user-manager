@@ -93,8 +93,6 @@ class UserController extends Controller
 
     /**
      * Updates an existing user.
-     * Uses updateUser() return value as the authoritative existence check
-     * to avoid a TOCTOU race between a pre-check SELECT and the UPDATE.
      * Returns {status, error, user}.
      */
     #[Route('/users/update', methods: 'POST')]
