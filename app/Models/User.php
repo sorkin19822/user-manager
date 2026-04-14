@@ -107,23 +107,24 @@ class User
      *
      * @param  int[]  $ids     Validated array of positive integer user ids
      * @param  string $action  One of: set_active | set_inactive | delete
+     * @return int[]|false     Existing user ids affected by the action, or false if none matched
      */
-    public function bulkAction(array $ids, string $action): bool
+    public function bulkAction(array $ids, string $action): array|false
     {
         if (empty($ids) || !in_array($action, self::ALLOWED_ACTIONS, true)) {
             return false;
         }
 
         $ids = array_values(array_unique(array_map('intval', $ids)));
+        $matchedIds = $this->getUserIdsByIds($ids);
 
         $placeholders = [];
-        foreach ($ids as $i => $_) {
+        foreach ($matchedIds as $i => $_) {
             $placeholders[] = ":id{$i}";
         }
         $in = implode(',', $placeholders);
 
-        $matched = $this->countUsersByIds($ids);
-        if ($matched === 0) {
+        if (empty($matchedIds)) {
             return false;
         }
 
@@ -135,12 +136,12 @@ class User
             $this->db->bind(':status', $status);
         }
 
-        foreach ($ids as $i => $id) {
+        foreach ($matchedIds as $i => $id) {
             $this->db->bind(":id{$i}", $id, \PDO::PARAM_INT);
         }
 
         $this->db->execute();
-        return true;
+        return $matchedIds;
     }
 
     /** @return string[] */
@@ -177,11 +178,14 @@ class User
         return $this->db->result() !== false;
     }
 
-    /** @param int[] $ids */
-    private function countUsersByIds(array $ids): int
+    /**
+     * @param  int[] $ids
+     * @return int[]
+     */
+    private function getUserIdsByIds(array $ids): array
     {
         if (empty($ids)) {
-            return 0;
+            return [];
         }
 
         $placeholders = [];
@@ -189,13 +193,11 @@ class User
             $placeholders[] = ":id{$i}";
         }
 
-        $this->db->query('SELECT COUNT(*) AS total FROM users WHERE id IN (' . implode(',', $placeholders) . ')');
+        $this->db->query('SELECT id FROM users WHERE id IN (' . implode(',', $placeholders) . ') ORDER BY id');
         foreach ($ids as $i => $id) {
             $this->db->bind(":id{$i}", $id, \PDO::PARAM_INT);
         }
 
-        $row = $this->db->result();
-
-        return $row === false ? 0 : (int) $row['total'];
+        return array_map('intval', array_column($this->db->results(), 'id'));
     }
 }

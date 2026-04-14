@@ -145,6 +145,21 @@ $(function () {
         });
     }
 
+    function uncheckUserRows(ids) {
+        ids.forEach(function (id) {
+            userRow(id).find('.js-user-check').prop('checked', false);
+        });
+        syncMasterCheckbox();
+    }
+
+    function missingIds(requestedIds, matchedIds) {
+        const matched = matchedIds.map(String);
+
+        return requestedIds.filter(function (id) {
+            return !matched.includes(String(id));
+        });
+    }
+
     function refreshUserRow(id) {
         $.ajax({
             url: '/users/get/' + encodeURIComponent(id),
@@ -164,12 +179,6 @@ $(function () {
             }
 
             showPageError(errorMessage(xhr.responseJSON, 'Could not refresh user.'));
-        });
-    }
-
-    function refreshUserRows(ids) {
-        ids.forEach(function (id) {
-            refreshUserRow(id);
         });
     }
 
@@ -432,7 +441,7 @@ $(function () {
             }
 
             if (afterSuccess) {
-                afterSuccess();
+                afterSuccess(response);
             }
         }).fail(function (xhr) {
             if (isNotFoundResponse(xhr)) {
@@ -476,9 +485,18 @@ $(function () {
             return;
         }
 
-        runBulkAction(action, ids, function () {
-            setRowsStatus(ids, action === 'set_active');
-            refreshUserRows(ids);
+        runBulkAction(action, ids, function (response) {
+            const matchedIds = response.ids || ids;
+            const staleIds = missingIds(ids, matchedIds);
+
+            setRowsStatus(matchedIds, action === 'set_active');
+            uncheckUserRows(matchedIds);
+
+            if (staleIds.length) {
+                removeUserRows(staleIds);
+                showPageError('Some selected users were already removed. The table has been updated.');
+            }
+
             $actionSelect.val('');
         });
     });

@@ -203,10 +203,10 @@ class UserController extends Controller
         }
 
         /** @var User $model */
-        $model    = $this->loadModel('User');
-        $affected = $model->bulkAction($ids, $action);
+        $model       = $this->loadModel('User');
+        $affectedIds = $model->bulkAction($ids, $action);
 
-        if (!$affected) {
+        if ($affectedIds === false) {
             $this->jsonResponse(
                 ['status' => false, 'error' => ['code' => 100, 'message' => 'no users matched']],
                 404
@@ -214,7 +214,7 @@ class UserController extends Controller
             return;
         }
 
-        $this->jsonResponse(['status' => true, 'error' => null]);
+        $this->jsonResponse(['status' => true, 'error' => null, 'ids' => $affectedIds]);
     }
 
     // -------------------------------------------------------------------------
