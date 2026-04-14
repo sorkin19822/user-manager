@@ -81,6 +81,7 @@ $(function () {
             })
             .data('id', user.id)
             .data('name', fullName)
+            .data('user', user)
             .append($('<i>').addClass('bi bi-pencil'));
 
         const $deleteButton = $('<button>')
@@ -257,6 +258,10 @@ $(function () {
         return role === 'admin' ? '1' : '2';
     }
 
+    function roleFromFormValue(role) {
+        return role === '1' ? 'admin' : 'user';
+    }
+
     function formData() {
         return {
             name_first: $.trim($('#nameFirst').val()),
@@ -331,7 +336,7 @@ $(function () {
                     id: response.id,
                     name_first: submittedData.name_first,
                     name_last: submittedData.name_last,
-                    role: submittedData.role,
+                    role: roleFromFormValue(submittedData.role),
                     status: submittedData.status === 1
                 });
             }
@@ -487,28 +492,7 @@ $(function () {
     });
 
     $tableBody.on('click', '.js-edit-user', function () {
-        const id = $(this).data('id');
-
-        $.ajax({
-            url: '/users/get/' + encodeURIComponent(id),
-            method: 'GET',
-            dataType: 'json'
-        }).done(function (response) {
-            if (!response.status) {
-                showPageError(errorMessage(response, 'Could not load user.'));
-                return;
-            }
-
-            openUserModal(response.user);
-        }).fail(function (xhr) {
-            if (isNotFoundResponse(xhr)) {
-                removeUserRows([id]);
-                showPageError('This user was already removed. The table has been updated.');
-                return;
-            }
-
-            showPageError(errorMessage(xhr.responseJSON, 'Could not load user.'));
-        });
+        openUserModal($(this).data('user'));
     });
 
     $tableBody.on('click', '.js-delete-user', function () {
