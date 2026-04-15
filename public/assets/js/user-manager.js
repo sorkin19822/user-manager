@@ -474,8 +474,14 @@ $(function () {
             }
         }).fail(function (xhr) {
             if (isNotFoundResponse(xhr)) {
-                removeUserRows(ids);
-                showPageError('Selected users were already removed. The table has been updated.');
+                if (action === 'delete') {
+                    removeUserRows(ids);
+                    showPageError('Selected users were already removed. The table has been updated.');
+                    return;
+                }
+
+                uncheckUserRows(ids);
+                showPageError('Selected users could not be updated. The table may be outdated.');
                 return;
             }
 
@@ -519,11 +525,10 @@ $(function () {
             const staleIds = missingIds(ids, matchedIds);
 
             setRowsStatus(matchedIds, action === 'set_active' ? 'active' : 'inactive');
-            uncheckUserRows(matchedIds);
+            uncheckUserRows(ids);
 
             if (staleIds.length) {
-                removeUserRows(staleIds);
-                showPageError('Some selected users were already removed. The table has been updated.');
+                showPageError('Some selected users could not be updated. The table may be outdated.');
             }
 
             $actionSelect.val('');
