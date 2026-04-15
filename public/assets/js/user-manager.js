@@ -19,27 +19,42 @@ $(function () {
     let deleteIds = [];
     let originalUserFormData = null;
 
+    /**
+     * Shows a page-level error that can stay visible until the user closes it.
+     */
     function showPageError(message) {
         $pageErrorText.text(message);
         $pageError.removeClass('d-none');
     }
 
+    /**
+     * Clears the page-level error without touching modal validation messages.
+     */
     function clearPageError() {
         $pageErrorText.text('');
         $pageError.addClass('d-none');
     }
 
+    /**
+     * Extracts the backend error message and keeps one fallback path for all AJAX handlers.
+     */
     function errorMessage(response, fallback) {
         return response && response.error && response.error.message
             ? response.error.message
             : fallback;
     }
 
+    /**
+     * Treats both HTTP 404 and the project-specific error code 100 as "record not found".
+     */
     function isNotFoundResponse(xhr) {
         return xhr.status === 404
             || (xhr.responseJSON && xhr.responseJSON.error && xhr.responseJSON.error.code === 100);
     }
 
+    /**
+     * Builds the status marker. Inactive is the default state; the `active` modifier is the only class toggle.
+     */
     function statusBadge(status) {
         const isActive = status === true || status === 'active';
         return $('<span>')
@@ -48,6 +63,9 @@ $(function () {
             .append($('<span>').addClass('visually-hidden').text(isActive ? 'active' : 'inactive'));
     }
 
+    /**
+     * Replaces the table body with one empty-state row.
+     */
     function renderEmptyRow(message) {
         $tableBody.empty().append(
             $('<tr>').addClass('js-empty-row').append(
@@ -56,10 +74,17 @@ $(function () {
         );
     }
 
+    /**
+     * Keeps full-name formatting in one place for row text, checkbox data, and confirmations.
+     */
     function userFullName(user) {
         return user.name_first + ' ' + user.name_last;
     }
 
+    /**
+     * Creates a complete table row and stores the backend user object on the edit button.
+     * That cached object lets the edit modal open without an extra `/users/get/{id}` request.
+     */
     function buildUserRow(user, checked) {
         const fullName = userFullName(user);
         const $checkbox = $('<input>')
@@ -104,6 +129,9 @@ $(function () {
             .append($('<td>').append($editButton, $deleteButton));
     }
 
+    /**
+     * Finds a user row by numeric id to avoid string/number comparison issues.
+     */
     function userRow(id) {
         const numId = Number(id);
         return $tableBody.find('tr[data-user-id]').filter(function () {
@@ -111,12 +139,18 @@ $(function () {
         });
     }
 
+    /**
+     * Adds a new user row without reloading or redrawing the full table.
+     */
     function appendUserRow(user) {
         $tableBody.find('.js-empty-row').remove();
         $tableBody.append(buildUserRow(user, false));
         $checkAll.prop('checked', false);
     }
 
+    /**
+     * Replaces only the affected row after update and preserves its checkbox state.
+     */
     function replaceUserRow(user) {
         const $row = userRow(user.id);
         const checked = $row.find('.js-user-check').is(':checked');
@@ -130,6 +164,9 @@ $(function () {
         syncMasterCheckbox();
     }
 
+    /**
+     * Removes only rows that are confirmed deleted or already missing on delete action.
+     */
     function removeUserRows(ids) {
         ids.forEach(function (id) {
             userRow(id).remove();
@@ -142,6 +179,9 @@ $(function () {
         syncMasterCheckbox();
     }
 
+    /**
+     * Updates status cells for matched ids only and refreshes cached row data for future editing.
+     */
     function setRowsStatus(ids, status) {
         const isActive = status === 'active';
 
@@ -160,6 +200,9 @@ $(function () {
         });
     }
 
+    /**
+     * Clears selected checkboxes after a completed action and then syncs the master checkbox.
+     */
     function uncheckUserRows(ids) {
         ids.forEach(function (id) {
             userRow(id).find('.js-user-check').prop('checked', false);
@@ -167,6 +210,10 @@ $(function () {
         syncMasterCheckbox();
     }
 
+    /**
+     * Compares requested ids with ids actually matched by the backend.
+     * Missing ids mean the page is stale, usually because another user changed the data.
+     */
     function missingIds(requestedIds, matchedIds) {
         const matched = matchedIds.map(Number);
 
@@ -175,6 +222,9 @@ $(function () {
         });
     }
 
+    /**
+     * Reloads one row from the backend. This is a targeted fallback, not a full table refresh.
+     */
     function refreshUserRow(id) {
         $.ajax({
             url: '/users/get/' + encodeURIComponent(id),
@@ -197,12 +247,18 @@ $(function () {
         });
     }
 
+    /**
+     * Keeps the header checkbox checked only when all visible user rows are selected.
+     */
     function syncMasterCheckbox() {
         const total = $('.js-user-check').length;
         const checked = $('.js-user-check:checked').length;
         $checkAll.prop('checked', total > 0 && total === checked);
     }
 
+    /**
+     * Renders the initial or fallback user list. Normal actions should update rows instead.
+     */
     function renderUsers(users) {
         $tableBody.empty();
         $checkAll.prop('checked', false);
@@ -217,6 +273,9 @@ $(function () {
         });
     }
 
+    /**
+     * Fallback loader used only when the server-rendered JSON payload is missing or invalid.
+     */
     function loadUsers() {
         clearPageError();
         renderEmptyRow('Loading...');
@@ -239,6 +298,9 @@ $(function () {
         });
     }
 
+    /**
+     * Reads users embedded into the page by the backend to avoid a duplicate `/users/list` request.
+     */
     function initialUsers() {
         const raw = $('#initialUsersData').text();
 
@@ -253,6 +315,9 @@ $(function () {
         }
     }
 
+    /**
+     * Returns selected users with both id and display name for bulk actions and confirmations.
+     */
     function selectedUsers() {
         return $('.js-user-check:checked').map(function () {
             const $checkbox = $(this);
@@ -263,6 +328,9 @@ $(function () {
         }).get();
     }
 
+    /**
+     * Restores the modal form to create-mode defaults and clears validation state.
+     */
     function resetUserForm() {
         $userForm[0].reset();
         $userForm.removeClass('was-validated');
@@ -273,6 +341,9 @@ $(function () {
         updateSaveButtonState();
     }
 
+    /**
+     * Opens the create/edit modal. Edit mode uses cached row data and stores the original form state.
+     */
     function openUserModal(user) {
         resetUserForm();
 
@@ -292,14 +363,23 @@ $(function () {
         userModal.show();
     }
 
+    /**
+     * Converts backend role values into select option values.
+     */
     function roleToFormValue(role) {
         return role === 'admin' ? '1' : '2';
     }
 
+    /**
+     * Converts select option values into backend role values.
+     */
     function roleFromFormValue(role) {
         return role === '1' ? 'admin' : 'user';
     }
 
+    /**
+     * Collects and normalizes the current form values before validation or submit.
+     */
     function formData() {
         return {
             name_first: $.trim($('#nameFirst').val()),
@@ -309,6 +389,9 @@ $(function () {
         };
     }
 
+    /**
+     * Applies custom validity for name fields so Bootstrap can display field-level feedback.
+     */
     function validateNameField(selector) {
         const field = $(selector)[0];
         const value = $.trim(field.value);
@@ -317,11 +400,17 @@ $(function () {
         field.setCustomValidity(isValid ? '' : 'Invalid name');
     }
 
+    /**
+     * Runs all custom validations that are not covered by native `required` attributes.
+     */
     function validateUserFormFields() {
         validateNameField('#nameFirst');
         validateNameField('#nameLast');
     }
 
+    /**
+     * Compares edit-mode form values with the snapshot taken when the modal was opened.
+     */
     function hasUserFormChanged() {
         if (!originalUserFormData) {
             return true;
@@ -333,11 +422,17 @@ $(function () {
         });
     }
 
+    /**
+     * Disables Save in edit mode until the user changes something.
+     */
     function updateSaveButtonState() {
         const isEdit = $('#userId').val() !== '';
         $saveUserButton.prop('disabled', isEdit && !hasUserFormChanged());
     }
 
+    /**
+     * Validates and submits create/update requests, then updates only the affected table row.
+     */
     function submitUserForm() {
         validateUserFormFields();
 
@@ -394,6 +489,9 @@ $(function () {
         });
     }
 
+    /**
+     * Prepares delete confirmation text. Bulk delete lists names so the user sees what will be removed.
+     */
     function openDeleteModal(mode, users) {
         deleteMode = mode;
         deleteIds = users.map(function (user) {
@@ -419,6 +517,9 @@ $(function () {
         confirmDeleteModal.show();
     }
 
+    /**
+     * Executes single or bulk delete. Only delete actions are allowed to remove rows from the table.
+     */
     function deleteSelected() {
         if (deleteMode === 'single') {
             $.ajax({
@@ -452,6 +553,10 @@ $(function () {
         });
     }
 
+    /**
+     * Sends one bulk request for all selected ids.
+     * Status actions update matched rows; delete actions can remove stale rows because deletion was intended.
+     */
     function runBulkAction(action, ids, afterSuccess) {
         clearPageError();
 
