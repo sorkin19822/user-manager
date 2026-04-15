@@ -28,7 +28,9 @@ class UserController extends Controller
     #[Route('/users', methods: 'GET')]
     public function index(): void
     {
-        $this->renderView('User/index', [], 'User Manager');
+        /** @var User $model */
+        $model = $this->loadModel('User');
+        $this->renderView('User/index', ['users' => $model->getAllUsers()], 'User Manager');
     }
 
     /** Returns all users as a JSON array. */

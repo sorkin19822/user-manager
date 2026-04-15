@@ -239,6 +239,20 @@ $(function () {
         });
     }
 
+    function initialUsers() {
+        const raw = $('#initialUsersData').text();
+
+        if (!raw) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
+        }
+    }
+
     function selectedUsers() {
         return $('.js-user-check:checked').map(function () {
             const $checkbox = $(this);
@@ -550,5 +564,10 @@ $(function () {
         deleteSelected();
     });
 
-    loadUsers();
+    const users = initialUsers();
+    if (users === null) {
+        loadUsers();
+    } else {
+        renderUsers(users);
+    }
 });

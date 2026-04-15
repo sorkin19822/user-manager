@@ -61,6 +61,10 @@
     </section>
 </main>
 
+<script type="application/json" id="initialUsersData">
+    <?= json_encode($users ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>
+</script>
+
 <div class="modal fade" id="userModal" tabindex="-1" aria-labelledby="userModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <form class="modal-content needs-validation" id="userForm" novalidate>
