@@ -5,7 +5,7 @@ User management demo app built with Bootstrap, jQuery, Ajax, vanilla PHP MVC, an
 ## Features
 
 - Single-page user manager.
-- User table loaded without page reload.
+- Initial users are hydrated from the server-rendered page; `/users/list` is used only as fallback.
 - Add, edit, delete, and bulk actions through Ajax.
 - Bootstrap table, buttons, selects, icons, alerts, and modals.
 - One Bootstrap modal reused for add and edit.
@@ -171,6 +171,18 @@ false = inactive
 ```
 
 The database stores status as `active` / `inactive`.
+
+Bulk action success:
+
+```json
+{
+  "status": true,
+  "error": null,
+  "ids": [1, 2, 3]
+}
+```
+
+For bulk actions, `ids` contains users actually matched by the backend. The frontend updates only those rows and treats missing ids as stale page state.
 
 ## Validation
 
